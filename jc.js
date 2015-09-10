@@ -154,7 +154,7 @@ var jc = {
     //获取MVC中的CTRL或REST中的RESOURCE
     getResCtrl: function(req, res, resName) {
         try {
-            var ctrl = require('./app/' + resName + '/' + resName + '-ctrl');
+            var ctrl = require(jc.config.app.dir.root + resName + '/' + resName + '-ctrl');
         } catch (error) {
             jc.handleErr(req, res, error);
             return;
