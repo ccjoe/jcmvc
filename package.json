@@ -1,0 +1,45 @@
+{
+  "name": "jcmvc",
+  "version": "1.0.0",
+  "description": "一个Nodejs MVC框架，可以用来开发MVC模式的Web应用或者作为前端的html,css,js,img等的模块化管理提供一个环境。",
+  "main": "jc.js",
+  "scripts": {
+    "test": "npm test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/ccjoe/jcmvc.git"
+  },
+  "keywords": [
+    "nodejs",
+    "mvc",
+    "web模块化管理"
+  ],
+  "author": "joecora@live.com",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/ccjoe/jcmvc/issues"
+  },
+  "homepage": "https://github.com/ccjoe/jcmvc#readme",
+  "dependencies": {
+    "glob": "~5.0.3",
+    "mongoskin": "1.4.13",
+    "lodash": "~3.10.0",
+    "dot": "1.0.3",
+    "chalk": "~1.1.0",
+    "passport": ">= 0.2.2",
+    "passport-local": ">= 1.0.0",
+    "connect": "3.4.0",
+    "cookie-session": "~1.2.0",
+    "express-session": "1.11.3",
+    "serve-static": "~1.9.3",
+    "body-parser": "~1.12.0",
+    "request": "2.61.0"
+  }
+}
+
+
+
+
+
+
