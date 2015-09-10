@@ -156,7 +156,7 @@ var jc = {
         try {
             var ctrl = require(jc.config.app.dir.root + resName + '/' + resName + '-ctrl');
         } catch (error) {
-            jc.handleErr(req, res, error);
+            // jc.handleErr(req, res, error);
             return;
         }
         return ctrl;
@@ -191,8 +191,14 @@ var jc = {
             return;
         }
 
-        var action = jc.getResCtrl(req, res, mvcLabels.c)[mvcLabels.a];
-        console.log(action, 'action')
+        //如果ctrl存在
+        try {
+            var ctrl = jc.getResCtrl(req, res, mvcLabels.c);
+            var action = ctrl[mvcLabels.a];
+        }catch(error){
+            
+        }
+        
         var mvcElem = {
             pn: mvcLabels.pn,
             v: tmpl,
@@ -213,11 +219,12 @@ var jc = {
         var mvcHandler = jc.parseMvc(req, res);
         console.log(chalk.underline.bgBlue.white('mvcHandler'), mvcHandler, mvcHandler.pn);
 
-        if (!mvcHandler) {
-            return;
-        };
+        // if (!mvcHandler) {
+        //     return;
+        // };
 
         var tmplData = dot.template(mvcHandler.v, undefined, jc);
+        console.log(mvcHandler.a, 'mvcHandler.a');
         if (mvcHandler.a) {
             //tmplData是一个dot.template方法，这里action执行在此方法上，可以在action里的this获取到此方法。
             // rtc 为 action 的 返回体
