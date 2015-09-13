@@ -1,6 +1,6 @@
 # jcmvc
 =======
-___npm build___
+___[npm build](https://www.npmjs.com/package/jcmvc) https://www.npmjs.com/package/jcmvc___  
 __一个Nodejs MVC框架，可以用来开发MVC模式的Web应用或者作为前端的html,css,js,img等的模块化管理提供一个环境__
 
 
