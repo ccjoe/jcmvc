@@ -1,6 +1,6 @@
 # jcmvc
 =======
-___[npm build](https://www.npmjs.com/package/jcmvc) https://www.npmjs.com/package/jcmvc___  
+___[npm build](https://www.npmjs.com/package/jcmvc)___  
 __一个Nodejs MVC框架，可以用来开发MVC模式的Web应用或者作为前端的html,css,js,img等的模块化管理提供一个环境__
 
 
@@ -26,6 +26,7 @@ jcmvc的example的使用实例: [jc-mvc](https://github.com/ccjoe/jc-mvc)
 相当于提供多web服务，在webs目录里可以新建项目，指定配置文件即可新开一个web服务，且，可以对视图进行最便捷且基础mvc路由与对结构层进行doT模板引擎的模块化管理。
 (难道你的开发模式还停留在手动在本地浏览且不停的COPY重复的东东......)
 
+<!-- more -->
 
 ## 依赖：
 - DB驱动     "mongoskin"
