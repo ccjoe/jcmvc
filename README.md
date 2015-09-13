@@ -1,16 +1,18 @@
 # jcmvc
-一个Nodejs MVC框架，可以用来开发MVC模式的Web应用或者作为前端的html,css,js,img等的模块化管理提供一个环境
 =======
+___npm build___
+__一个Nodejs MVC框架，可以用来开发MVC模式的Web应用或者作为前端的html,css,js,img等的模块化管理提供一个环境__
 
-引入依赖jcmvc  `npm install jcmvc`
+
+引入依赖jcmvc  `npm install jcmvc`  
 jcmvc的example的使用实例: [jc-mvc](https://github.com/ccjoe/jc-mvc)
 
 ## 个人觉得有以下特点或优点：
 
 - 采取自然映射，无需配置路由及手动路由，模块或目录结构的组织即路由。 
   1. mvc  ---> ctrl/action/param
-  2. rest ---> restUriPrefix/resource/param [GET, POST, PUT, DELETE]
-  在缺省ctrl时，会依据view的结构生成路由，意义在于为`重构者或美工`提供一个纯表现与结构的模块化管理
+  2. rest ---> restUriPrefix/resource/param [GET, POST, PUT, DELETE]  
+在缺省ctrl时，会依据view的结构生成路由，意义在于为`重构者或美工`提供一个纯表现与结构的模块化管理
 
 - 无需处理除数据外的其它动作。
   1. model自动promise化
@@ -161,7 +163,13 @@ exports.rest = {
 
 `注意：` rootPath为具体的model与ctrl实现（如果不需要可以不指定，例如重构者仅需要交付实现结构与样式及交互时，不涉及到数据时），如果仅需要静态的web开发，可以指定为默认的或不指定。如果需要为新开的web提供model与ctrl的具体实现，也可以指定到任意目录。实现同上目录结构图(约定的目录结构)
 
+`效果即：` localhost:8001/web1module/test  
+          localhost:8002/web2module/test  
+          localhost:8003/web3module/test  
+端口域名均自由配置, web1module， web2module， web3module的父目录即fePath可以任意指定，如此即实现基于Nodejs的MVC模式的模块化管理web服务器，去管理多个web应用。
+
 ```javascript
+//config.js
 var path = require('path')
     ,_ = require('lodash')
     ,env = process.env.NODE_ENV || 'dev'
@@ -210,4 +218,3 @@ module.exports = config[env];
     将jcmvc npm化  
     提供多web服务，可以指定到任意目录（详见以上）  
 
-  

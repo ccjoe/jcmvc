@@ -161,6 +161,9 @@ var jc = {
         }
         return ctrl;
     },
+    getGlobalDataForView: function (req, res) {
+        return _.assign({}, jc.config, {route: jc.queryMvc(req, res)});
+    },
     //获取MVC各要素 对应的文件及方法名称(除model外)
     //Ctrl/Action约定
     queryMvc: function(req, res) {
@@ -241,7 +244,7 @@ var jc = {
             console.log(rtc, 'RTC');
             
             if (!rtc) {
-                res.end(tmplData({}));
+                render({});
                 return;
             };
             //如果 rtc是否promise,不是且存在的话控制器必须返回数据object
@@ -259,7 +262,7 @@ var jc = {
             });
         } else {
             //如果没有action,也可以输出相应静态文档，但如果没有ctrl话还是会报错
-            res.end(tmplData({}));
+            render({});
         }
 
         function sendRes(req, res, rtc) {
@@ -267,17 +270,24 @@ var jc = {
             if (method === 'GET'){
                 // var dataForTmpl = _.assign({}, {page:rtc}, {path: jc.queryMvc(req,res)});
                 // console.log(rtc,  'dataForTmpl');
-                res.end(tmplData(rtc));
+                render(rtc);
             }
             else if (method === 'POST'){
                 //如果在POST请求时，如果声明sendType为PAGE也要渲染页面;
                 if(res.sendType === 'PAGE'){
 
-                    res.end(tmplData(rtc));
+                    render(rtc);
                     return;
                 }
                 res.json(rtc);
             }
+        }
+
+        //所有渲染模板带上getGlobalDataForView信息
+        function render(data){
+            var sendData = _.assign({}, jc.getGlobalDataForView(req, res), {viewdata: data});
+            console.log(sendData, 'SENDDATA');
+            res.end(tmplData(sendData));
         }
     },
 
@@ -328,7 +338,7 @@ var jc = {
     },
 
     // 渲染静态文件,返回模板
-    render: function(path, data) {
+    renderByPath: function(path, data) {
         var tmpl = jc.load(path);
         return dot.template(tmpl, undefined, jc)(data ? data : {});
     },
@@ -342,7 +352,7 @@ var jc = {
         res.writeHead(500, {
             'Content-type': 'text/html'
         });
-        res.end(jc.render('public/error.html', {
+        res.end(jc.renderByPath('public/error.html', {
             error: error
         }), 'utf-8');
     },
