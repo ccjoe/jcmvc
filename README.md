@@ -3,7 +3,7 @@
 ___[npm build](https://www.npmjs.com/package/jcmvc)___  
 __一个Nodejs MVC框架，可以用来开发MVC模式的Web应用或者作为前端的html,css,js,img等的模块化管理提供一个环境__
 
-![ccjoe](https://nodei.co/npm/jcmvc.png?downloads=true)
+![ccjoe](https://nodei.co/npm/jcmvc.png?downloads=true)(https://www.npmjs.com/package/jcmvc)
 
 引入依赖jcmvc  `npm install jcmvc`  
 jcmvc的example的使用实例: [jc-mvc](https://github.com/ccjoe/jc-mvc)
