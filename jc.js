@@ -8,12 +8,11 @@ var mongo = require('mongoskin')
    ,fs = require('fs')
    ,staticServe = require('serve-static');
 
-
 var request = require('./lib/req')
    ,response = require('./lib/res')
    ,utils = require('./lib/utils')
    // ,config = require('./config')
-   ,connect = require('connect');
+   ,connect = require('connect'); 
 
 var jc = {
     config: {},
