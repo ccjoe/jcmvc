@@ -8,11 +8,12 @@ var mongo = require('mongoskin')
    ,fs = require('fs')
    ,staticServe = require('serve-static');
 
+
 var request = require('./lib/req')
    ,response = require('./lib/res')
    ,utils = require('./lib/utils')
    // ,config = require('./config')
-   ,connect = require('connect'); 
+   ,connect = require('connect');
 
 var jc = {
     config: {},
@@ -38,11 +39,13 @@ var jc = {
                 next();
             })
             return app;
-        } else {
+        } 
+        //todo else应该没有处理完整 或 将处理为不支持没有connect的情况
+        /*else {
             return function() {
                 jc.init(req, res)
             };
-        }
+        }*/
     },
 
     //创建server
@@ -160,8 +163,38 @@ var jc = {
         }
         return ctrl;
     },
+    //获取除业务数据外的 某视图所需要的其它信息包含
+    /*
+     * @method
+     * @return {object} info
+     * info.config 全站配置信息
+     * info.route  路由信息
+     * info.resource 除全app公用资源外的 差异化css,js, ...资源引用
+     */
     getGlobalDataForView: function (req, res) {
-        return _.assign({}, jc.config, {route: jc.queryMvc(req, res)});
+        return _.assign({}, jc.config, {
+            route: jc.queryMvc(req, res)}, {
+            resource: jc.parseResource(req, res)
+        });
+    },
+    //解析前端资源目录的 resource-config.js的资源配置
+    parseResource: function(req, res){
+        var mergeRes = {};
+        //读取配置文件
+        var resConfig = require(jc.config.path.fe+'resource-config');
+        //读取相应的ctrl与action的对象
+        var mvcName = jc.queryMvc(req, res);
+        //获取ctrl内公用的对象与差异化的对象
+        var ctrlRes = resConfig[mvcName.c] || {};
+        var commonAppRes = resConfig.common || {},
+            commonCtrlRes = ctrlRes.common || {},
+            specActionRes = ctrlRes[mvcName.a] || {};
+        mergeRes = _.merge({}, commonAppRes, commonCtrlRes, specActionRes, function(a, b, c) {
+          if (_.isArray(a)) {
+            return a.concat(b);
+          }
+        });
+        return mergeRes;
     },
     //获取MVC各要素 对应的文件及方法名称(除model外)
     //Ctrl/Action约定
@@ -183,6 +216,7 @@ var jc = {
         return mvcName;
     },
     //获取MVC各要素 对应的实体(除model外)
+    //主要是请求所对应ctrl的action  及 相应的resource
     parseMvc: function(req, res) {
         var mvcLabels = jc.queryMvc(req, res);
         console.log(chalk.underline.bgBlue.white('mvcName'), mvcLabels);
