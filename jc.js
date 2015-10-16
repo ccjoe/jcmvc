@@ -1,32 +1,45 @@
-var mongo = require('mongoskin')
+﻿var mongo = require('mongoskin')
    ,http = require('http')
    ,url = require('url')
    ,dot = require('dot')
-   ,chalk = require('chalk')
+   
    ,_ = require('lodash')
    ,path = require('path')
    ,fs = require('fs')
    ,staticServe = require('serve-static');
 
 
-var request = require('./lib/req')
+var log = require('./lib/log')
+   ,request = require('./lib/req')
    ,response = require('./lib/res')
    ,utils = require('./lib/utils')
    // ,config = require('./config')
    ,connect = require('connect');
 
 var jc = {
+    default: {
+        debug: true,
+        debugLabel: ' 【DEBUG】'
+    },
     config: {},
+    log: log,
     req: request,
     res: response,
     staticServe: staticServe,
-    init: function(req, res) {
+    init: function(req, res, next) {
+        var isStatic = jc.processStatic(req, res);
+        log.warn(isStatic, 'isStatic');
+        if(isStatic){
+            next();
+            return;
+        }
         //引入扩展的req, res
         if (res.getHeader('X-Powered-By') !== 'R_E_S_T') {
             jc.handleMvc(req, res);
         } else {
             jc.handleRest(req, res);
         }
+
     },
     //创建app, 有connect中间件时使用中间件初始app,无时直接初始化
     app: function() {
@@ -37,7 +50,7 @@ var jc = {
                 req = _.assign(req, jc.req);
                 res = _.assign(res, jc.res);
                 next();
-            })
+            });
             return app;
         } 
         //todo else应该没有处理完整 或 将处理为不支持没有connect的情况
@@ -53,7 +66,7 @@ var jc = {
         app.use(jc.init);
         //没有传入app,则从内部jc.app启动
         http.createServer(app || jc.app).listen(jc.config.app.port, jc.config.app.host);
-        console.log(chalk.red('运行于 ' + jc.config.app.host + ':' + jc.config.app.port));
+        log.warn('运行于:' + jc.config.app.host + ':' + jc.config.app.port);
     },
     //连接DB
     db: function(dbname) {
@@ -63,12 +76,22 @@ var jc = {
         });
         db.open(function(error, dbConnetion) {
             if (error) {
-                console.log(error);
+                jc.handleErr(error);
                 process.exit(1);
             }
         });
 
         return db;
+    },
+    //@todo 判断请求的是静态服务器资源
+    processStatic: function(req, res){
+        var reqUrl = req.url;
+        if(/^\/static\/\S+\.\S+/.test(reqUrl)){
+            log.column(req.method, reqUrl);
+            return true;
+        }else{
+            return false;
+        }
     },
     //middleWare by REST header
     setHeaderRest: function(req, res, next) {
@@ -86,7 +109,7 @@ var jc = {
         var restIf = jc.queryRest(req, res); //restInfo
         req.key = restIf.key;
         jc.printf(req, res);
-        console.log(restIf, 'restIf');
+       
         var finalRest;
         switch (req.method) {
             case 'GET':
@@ -151,7 +174,7 @@ var jc = {
                 action = '删除';
                 break;
         }
-        console.log(chalk.bgGreen.black(req.method + '请求' + action + '资源:' + restIf.resname + (restIf.key ? ',且Key为' + restIf.key : '列表')));
+        log.info(req.method + '请求' + action + '资源:' + restIf.resname + (restIf.key ? ',且Key为' + restIf.key : '列表'));
     },
     //获取MVC中的CTRL或REST中的RESOURCE
     getResCtrl: function(req, res, resName) {
@@ -219,11 +242,11 @@ var jc = {
     //主要是请求所对应ctrl的action  及 相应的resource
     parseMvc: function(req, res) {
         var mvcLabels = jc.queryMvc(req, res);
-        console.log(chalk.underline.bgBlue.white('mvcName'), mvcLabels);
+        log.info('MVC NAME', mvcLabels);
         try {
             var tmpl = jc.load(mvcLabels.v);
         } catch (error) {
-            jc.handleErr(req, res, error);
+            jc.handleErr(error, res);
             return;
         }
 
@@ -252,16 +275,11 @@ var jc = {
     */
 
     handleMvc: function(req, res) {
-        var mvcHandler = jc.parseMvc(req, res);
-        console.log(chalk.underline.bgBlue.white('mvcHandler'), mvcHandler, mvcHandler.pn);
+       var mvcHandler = jc.parseMvc(req, res);
+        log.info('MVC对象:', mvcHandler);
 
-        // if (!mvcHandler) {
-        //     return;
-        // };
-
-        var tmplData = dot.template(mvcHandler.v, undefined, jc);
-        console.log(mvcHandler.a, 'mvcHandler.a');
-        if (mvcHandler.a) {
+        if (mvcHandler && mvcHandler.a) {
+            log.log('ACTION: ', mvcHandler.a);
             //tmplData是一个dot.template方法，这里action执行在此方法上，可以在action里的this获取到此方法。
             // rtc 为 action 的 返回体
             //req.key为id或标识信息，数组长度为1时即为第一个元素，否则为数组。
@@ -274,7 +292,7 @@ var jc = {
             // };
             //如果 rtc为不返回任何东西，则默认渲染无数据页面
 
-            console.log(rtc, 'RTC');
+            log.info('MODEL=>CTRL', rtc);
             
             if (!rtc) {
                 render({});
@@ -291,10 +309,10 @@ var jc = {
                 //渲染带模板的数据
                 sendRes(req, res, data);
             }).catch(function(error) {
-                chalk.bgRed(error);
+                log.error(error);
             });
         } else {
-            //如果没有action,也可以输出相应静态文档，但如果没有ctrl话还是会报错
+            //如果没有action,也可以输出相应静态文档，但如果没有ctrl话还是会报错(更改->也不报错,作为前端环境管理时不写服务也需要展示页面)
             render({});
         }
 
@@ -302,7 +320,7 @@ var jc = {
             var method = req.method;
             if (method === 'GET'){
                 // var dataForTmpl = _.assign({}, {page:rtc}, {path: jc.queryMvc(req,res)});
-                // console.log(rtc,  'dataForTmpl');
+                // log.log(rtc,  'dataForTmpl');
                 render(rtc);
             }
             else if (method === 'POST'){
@@ -318,8 +336,10 @@ var jc = {
 
         //所有渲染模板带上getGlobalDataForView信息
         function render(data){
+            var view = mvcHandler ? mvcHandler.v : '';
+            var tmplData = dot.template(view, undefined, jc);
             var sendData = _.assign({}, jc.getGlobalDataForView(req, res), {viewdata: data});
-            console.log(sendData, 'SENDDATA');
+            log.info('CTRL=>VIEW DATA', sendData);
             res.end(tmplData(sendData));
         }
     },
@@ -331,7 +351,6 @@ var jc = {
             return false
         };
         for (var i = 0; i < accessDir.length; i++) {
-            console.log(path, accessDir[i], 'pathstr');
             if (!!~path.indexOf(accessDir[i])) {
                 return true;
             }
@@ -342,7 +361,7 @@ var jc = {
     //简单来讲 将model里面的每个方法 promise化重写，返回这个model方法集合
     promisifyModel: function(model) {
         for (var fn in model) {
-            console.log(chalk.bgBlack.white(fn, 'promisified function'));
+            log.info('PROMISIFY FUNCTION', fn);
             (function(i) {
                 var modelfn = model[i]; //指向原方法的引用
                 if (typeof modelfn === 'function') {
@@ -352,6 +371,7 @@ var jc = {
                                 if (!error) {
                                     resolve(data);
                                 } else {
+                                    jc.handleErr(error);
                                     reject(error);
                                 }
                             });
@@ -381,14 +401,20 @@ var jc = {
         if (data) return data.toString();
     },
 
-    handleErr: function(req, res, error) {
+    handleErr: function(err, res) {
+        if(!res){
+            log.error('发生错误', err);
+            return;
+        }
         res.writeHead(500, {
             'Content-type': 'text/html'
         });
         res.end(jc.renderByPath('public/error.html', {
-            error: error
+            title: 'ERROR',
+            error: err
         }), 'utf-8');
     },
+
     /*//将任何方法promise化
     promisify: function(fn) {
         var callback = function() {
@@ -412,7 +438,7 @@ var jc = {
     //TJ thunkify
     thunkify: function(fn) {
         if ('function' !== typeof fn) {
-            console.log('function required');
+            log.log('function required');
         }
 
         return function() {
@@ -465,3 +491,8 @@ var jc = {
 };
 
 exports = module.exports = jc;
+
+//todo 
+// 访问不存在的路由会导致报错
+// 加上resource-config.js及静态目录加上static后对于子项目的影响
+// 静态资源访问拦截
