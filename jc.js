@@ -1,50 +1,47 @@
 ﻿var mongo = require('mongoskin')
    ,http = require('http')
-   ,url = require('url')
-   ,dot = require('dot')
    
    ,_ = require('lodash')
-   ,path = require('path')
-   ,fs = require('fs')
-   ,staticServe = require('serve-static');
-
-
+   ,staticServe = require('serve-static')
+   ,connect = require('connect')
+   ,favicon = require('serve-favicon');
 var log = require('./lib/log')
-   ,request = require('./lib/req')
-   ,response = require('./lib/res')
-   ,utils = require('./lib/utils')
    // ,config = require('./config')
-   ,connect = require('connect');
+   ,utils = require('./lib/utils')
+   ,mvc = require('./lib/mvc')
+   ,rest = require('./lib/rest')
+   ,request = require('./lib/req')
+   ,response = require('./lib/res');
 
 var jc = {
-    default: {
-        debug: true,
-        debugLabel: ' 【DEBUG】'
-    },
+    log:log,
     config: {},
-    log: log,
     req: request,
     res: response,
     staticServe: staticServe,
     init: function(req, res, next) {
-        var isStatic = jc.processStatic(req, res);
-        log.warn(isStatic, 'isStatic');
+        jc.initConfig();
+        var isStatic = /^\/static\/\S+\.\S+/.test(req.url);
         if(isStatic){
-            next();
-            return;
+            next(); return;
         }
         //引入扩展的req, res
-        if (res.getHeader('X-Powered-By') !== 'R_E_S_T') {
-            jc.handleMvc(req, res);
+        if (res.getHeader('X-Powered-By') !== 'JC_REST') {
+            mvc.handleMvc(req, res);
         } else {
-            jc.handleRest(req, res);
+            rest.handleRest(req, res, jc.config);
         }
-
+    },
+    initConfig: function(){
+        utils.config = jc.config;
+        rest.config = jc.config;
+        mvc.config = jc.config;
     },
     //创建app, 有connect中间件时使用中间件初始app,无时直接初始化
     app: function() {
         if (connect) {
             var app = connect();
+            app.use(favicon(jc.config.path.stat + 'favicon.ico'));
             //还是使用中间件形式混合入扩展的req,res;
             app.use(function(req, res, next) {
                 req = _.assign(req, jc.req);
@@ -53,12 +50,6 @@ var jc = {
             });
             return app;
         } 
-        //todo else应该没有处理完整 或 将处理为不支持没有connect的情况
-        /*else {
-            return function() {
-                jc.init(req, res)
-            };
-        }*/
     },
 
     //创建server
@@ -83,267 +74,7 @@ var jc = {
 
         return db;
     },
-    //@todo 判断请求的是静态服务器资源
-    processStatic: function(req, res){
-        var reqUrl = req.url;
-        if(/^\/static\/\S+\.\S+/.test(reqUrl)){
-            log.column(req.method, reqUrl);
-            return true;
-        }else{
-            return false;
-        }
-    },
-    //middleWare by REST header
-    setHeaderRest: function(req, res, next) {
-        //https://developer.mozilla.org/zh-CN/docs/Web/HTTP/Access_control_CORS
-        res.header('Access-Control-Allow-Origin', req.headers.origin); //origin参数指定一个允许向该服务器提交请求的URI.对于一个不带有credentials的请求,可以指定为'*',表示允许来自所有域的请求.
-        res.header('Access-Control-Allow-Credentials', 'true'); //带上认证信息(如 cookie)
-        res.header('Access-Control-Allow-Headers', 'X-Requested-With'); //x-requested-with XMLHttpRequest  //表明是AJax异步
-        res.header('Access-Control-Allow-Methods', 'PUT,POST,GET,DELETE,OPTIONS');
-        res.header('Access-Control-Max-Age', '86400'); // 预请求的结果的有效期
-        res.header('X-Powered-By', 'R_E_S_T'); //个人标记,用以区分是否resturl
-        res.header('Content-Type', 'application/json;charset=utf-8');
-        next();
-    },
-    handleRest: function(req, res) {
-        var restIf = jc.queryRest(req, res); //restInfo
-        req.key = restIf.key;
-        jc.printf(req, res);
-       
-        var finalRest;
-        switch (req.method) {
-            case 'GET':
-                finalRest = restIf.res.query(req, res);
-                break;
-            case 'POST':
-                finalRest = restIf.res.update(req, res);
-                break;
-            case 'PUT':
-                finalRest = restIf.res.create(req, res);
-                break;
-            case 'DELETE':
-                finalRest = restIf.res.remove(req, res);
-                break;
-        };
-        //判断是否promise
-        if(finalRest.then){
-            finalRest.then(function(data){
-                res.json(data);
-            });
-        }else{
-            res.json(finalRest);
-        }
-    },
-
-    //因Restful URI 表征资源，相应的URI会影响到collection的设计，因为Restful更应该有好的设计。
-    /*比如网上汇款，从账户1向账户2汇款500元，错误的URI是：
-　　      POST /accounts/1/transfer/500/to/2
-      正确的写法是把动词transfer改成名词transaction，资源不能是动词，但是可以是一种服务：
-         POST /transaction  from=1&to=2&amount=500.00 */
-    //处理Rest请求, 与处理MVC不同的仅仅是将CTRL/Action 约定改成 Resource/Method约定
-    //Resource/Method约定
-    queryRest: function(req, res) {
-        var uri = url.parse(req.url).pathname;
-        uri = uri.split(jc.config.restUriPrefix).join('').split('/');
-        var resource = uri[1],
-            key = uri[2],
-            method = req.method;
-
-        var resAction = jc.getResCtrl(req, res, resource);
-        return {
-            res: resAction.rest, //对应的resource方法集合
-            resname: resource,
-            key: key,
-            mtd: method
-        }
-    },
-    printf: function(req, res) {
-        var restIf = jc.queryRest(req, res),
-            action = '';
-        switch (req.method) {
-            case 'GET':
-                action = '获取';
-                break;
-            case 'POST':
-                action = '新增';
-                break;
-            case 'PUT':
-                action = '修改';
-                break;
-            case 'DELETE':
-                action = '删除';
-                break;
-        }
-        log.info(req.method + '请求' + action + '资源:' + restIf.resname + (restIf.key ? ',且Key为' + restIf.key : '列表'));
-    },
-    //获取MVC中的CTRL或REST中的RESOURCE
-    getResCtrl: function(req, res, resName) {
-        try {
-            var ctrl = require(jc.config.path.root + resName + '/' + resName + '-ctrl');
-        } catch (error) {
-            // jc.handleErr(req, res, error);
-            return;
-        }
-        return ctrl;
-    },
-    //获取除业务数据外的 某视图所需要的其它信息包含
-    /*
-     * @method
-     * @return {object} info
-     * info.config 全站配置信息
-     * info.route  路由信息
-     * info.resource 除全app公用资源外的 差异化css,js, ...资源引用
-     */
-    getGlobalDataForView: function (req, res) {
-        return _.assign({}, jc.config, {
-            route: jc.queryMvc(req, res)}, {
-            resource: jc.parseResource(req, res)
-        });
-    },
-    //解析前端资源目录的 resource-config.js的资源配置
-    parseResource: function(req, res){
-        var mergeRes = {};
-        //读取配置文件
-        var resConfig = require(jc.config.path.fe+'resource-config');
-        //读取相应的ctrl与action的对象
-        var mvcName = jc.queryMvc(req, res);
-        //获取ctrl内公用的对象与差异化的对象
-        var ctrlRes = resConfig[mvcName.c] || {};
-        var commonAppRes = resConfig.common || {},
-            commonCtrlRes = ctrlRes.common || {},
-            specActionRes = ctrlRes[mvcName.a] || {};
-        mergeRes = _.merge({}, commonAppRes, commonCtrlRes, specActionRes, function(a, b, c) {
-          if (_.isArray(a)) {
-            return a.concat(b);
-          }
-        });
-        return mergeRes;
-    },
-    //获取MVC各要素 对应的文件及方法名称(除model外)
-    //Ctrl/Action约定
-    queryMvc: function(req, res) {
-        var pathname = url.parse(req.url).pathname,
-            paths = pathname.split('/');
-        var ctrl = paths[1] || 'index', //controller
-            action = paths[2] || 'index', //action
-            args = paths.slice(3) || '', //arguments
-            view = ctrl + '/' + action + '.html';
-
-        var mvcName = {
-            pn: pathname,
-            v: view,
-            c: ctrl,
-            a: action,
-            p: args
-        };
-        return mvcName;
-    },
-    //获取MVC各要素 对应的实体(除model外)
-    //主要是请求所对应ctrl的action  及 相应的resource
-    parseMvc: function(req, res) {
-        var mvcLabels = jc.queryMvc(req, res);
-        log.info('MVC NAME', mvcLabels);
-        try {
-            var tmpl = jc.load(mvcLabels.v);
-        } catch (error) {
-            jc.handleErr(error, res);
-            return;
-        }
-
-        //如果ctrl存在
-        try {
-            var ctrl = jc.getResCtrl(req, res, mvcLabels.c);
-            var action = ctrl[mvcLabels.a];
-        }catch(error){
-            
-        }
-        
-        var mvcElem = {
-            pn: mvcLabels.pn,
-            v: tmpl,
-            // c: ctrl,
-            a: action,
-            p: mvcLabels.p
-        };
-        return mvcElem;
-    },
-    // 处理MVC之间的融合
-    /* 这里决定了相应的action需要返回的数据及格式,
-       GET 渲染模板
-       POST 返回JOSN
-       if promise 
-    */
-
-    handleMvc: function(req, res) {
-       var mvcHandler = jc.parseMvc(req, res);
-        log.info('MVC对象:', mvcHandler);
-
-        if (mvcHandler && mvcHandler.a) {
-            log.log('ACTION: ', mvcHandler.a);
-            //tmplData是一个dot.template方法，这里action执行在此方法上，可以在action里的this获取到此方法。
-            // rtc 为 action 的 返回体
-            //req.key为id或标识信息，数组长度为1时即为第一个元素，否则为数组。
-            req.key = mvcHandler.p.length === 1 ? mvcHandler.p[0] : mvcHandler.p;
-            var rtc = mvcHandler.a.apply(null, [req, res]); //.concat(mvcHandler.p)
-            //但是这里统一处理tmplData(data),没有在action里处理这个，仅需要在action里返回带data的promise;
-            //如果之前有设置请求头，则不渲染
-            // if(res.headersSent){
-            //     return;
-            // };
-            //如果 rtc为不返回任何东西，则默认渲染无数据页面
-
-            log.info('MODEL=>CTRL', rtc);
-            
-            if (!rtc) {
-                render({});
-                return;
-            };
-            //如果 rtc是否promise,不是且存在的话控制器必须返回数据object
-            if (!rtc.then) {
-                //这里认为GET是为了请求页面， POST是为了提交数据而返回结果
-                sendRes(req, res, rtc);
-                return;
-            }
-
-            rtc.then(function(data) {
-                //渲染带模板的数据
-                sendRes(req, res, data);
-            }).catch(function(error) {
-                log.error(error);
-            });
-        } else {
-            //如果没有action,也可以输出相应静态文档，但如果没有ctrl话还是会报错(更改->也不报错,作为前端环境管理时不写服务也需要展示页面)
-            render({});
-        }
-
-        function sendRes(req, res, rtc) {
-            var method = req.method;
-            if (method === 'GET'){
-                // var dataForTmpl = _.assign({}, {page:rtc}, {path: jc.queryMvc(req,res)});
-                // log.log(rtc,  'dataForTmpl');
-                render(rtc);
-            }
-            else if (method === 'POST'){
-                //如果在POST请求时，如果声明sendType为PAGE也要渲染页面;
-                if(res.sendType === 'PAGE'){
-
-                    render(rtc);
-                    return;
-                }
-                res.json(rtc);
-            }
-        }
-
-        //所有渲染模板带上getGlobalDataForView信息
-        function render(data){
-            var view = mvcHandler ? mvcHandler.v : '';
-            var tmplData = dot.template(view, undefined, jc);
-            var sendData = _.assign({}, jc.getGlobalDataForView(req, res), {viewdata: data});
-            log.info('CTRL=>VIEW DATA', sendData);
-            res.end(tmplData(sendData));
-        }
-    },
-
+ 
     //处理需要权限控制的URL, true,需要验证登录，false不需要
     access: function(path) {
         var accessDir = jc.config.access;
@@ -356,140 +87,10 @@ var jc = {
             }
         }
         return false
-    },
-    //将model promise化
-    //简单来讲 将model里面的每个方法 promise化重写，返回这个model方法集合
-    promisifyModel: function(model) {
-        for (var fn in model) {
-            log.info('PROMISIFY FUNCTION', fn);
-            (function(i) {
-                var modelfn = model[i]; //指向原方法的引用
-                if (typeof modelfn === 'function') {
-                    model[i] = function(req, res) {
-                        return new Promise(function(resolve, reject) {
-                            modelfn(req, res, function(error, data) {
-                                if (!error) {
-                                    resolve(data);
-                                } else {
-                                    jc.handleErr(error);
-                                    reject(error);
-                                }
-                            });
-                        });
-                    }
-                } else {
-                    //加入 REST的promise化。
-                    if (i === 'rest') {
-                        jc.promisifyModel(model['rest']);
-                    } else {
-                        throw 'promisifyModel时Model里只能为function和rest对象';
-                    }
-                }
-            })(fn)
-        }
-        return model;
-    },
-
-    // 渲染静态文件,返回模板
-    renderByPath: function(path, data) {
-        var tmpl = jc.load(path);
-        return dot.template(tmpl, undefined, jc)(data ? data : {});
-    },
-    //读取文件
-    load: function(path) {
-        var data = fs.readFileSync(jc.config.path.view + path);
-        if (data) return data.toString();
-    },
-
-    handleErr: function(err, res) {
-        if(!res){
-            log.error('发生错误', err);
-            return;
-        }
-        res.writeHead(500, {
-            'Content-type': 'text/html'
-        });
-        res.end(jc.renderByPath('public/error.html', {
-            title: 'ERROR',
-            error: err
-        }), 'utf-8');
-    },
-
-    /*//将任何方法promise化
-    promisify: function(fn) {
-        var callback = function() {
-            var args = [].prototype.slice.call(arguments);
-            if (args.length <= 1) {
-                resolve(args[args.length - 1]);
-            } else {
-                if (args[0]) {
-                    reject(args[0])
-                } else {
-                    resolve(args.slice(1));
-                }
-            }
-        };
-
-        return new Promise(function(resolve, reject) {
-            fn(callback);
-        });
-    },
-
-    //TJ thunkify
-    thunkify: function(fn) {
-        if ('function' !== typeof fn) {
-            log.log('function required');
-        }
-
-        return function() {
-            var args = new Array(arguments.length);
-            var ctx = this;
-
-            for (var i = 0; i < args.length; ++i) {
-                args[i] = arguments[i];
-            }
-
-            return function(done) {
-                var called;
-
-                args.push(function() {
-                    if (called) return;
-                    called = true;
-                    done.apply(null, arguments);
-                });
-
-                try {
-                    fn.apply(ctx, args);
-                } catch (err) {
-                    done(err);
-                }
-            }
-        }
-    },
-    //TJ Co
-    co: function(GenFunc) {
-        return function(cb) {
-            var gen = GenFunc()
-            next();
-
-            function next(err, args) {
-                if (err) {
-                    cb(err);
-                } else {
-                    if (gen.next) {
-                        var ret = gen.next(args);
-                        if (ret.done) {
-                            cb && cb(null, args)
-                        } else {
-                            ret.value(next);
-                        }
-                    }
-                }
-            }
-        }
-    }*/
+    }
 };
-
+//分发api
+var jc = _.assign(jc, utils, rest);
 exports = module.exports = jc;
 
 //todo 
