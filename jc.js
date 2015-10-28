@@ -1,12 +1,11 @@
 ﻿var mongo = require('mongoskin')
    ,http = require('http')
-   
    ,_ = require('lodash')
    ,staticServe = require('serve-static')
    ,connect = require('connect')
    ,favicon = require('serve-favicon');
+
 var log = require('./lib/log')
-   // ,config = require('./config')
    ,utils = require('./lib/utils')
    ,mvc = require('./lib/mvc')
    ,rest = require('./lib/rest')
@@ -33,9 +32,8 @@ var jc = {
         }
     },
     initConfig: function(){
-        utils.config = jc.config;
-        rest.config = jc.config;
-        mvc.config = jc.config;
+        var config = jc.config;
+        utils.config = mvc.config = rest.config = config;
     },
     //创建app, 有connect中间件时使用中间件初始app,无时直接初始化
     app: function() {
@@ -44,14 +42,13 @@ var jc = {
             app.use(favicon(jc.config.path.stat + 'favicon.ico'));
             //还是使用中间件形式混合入扩展的req,res;
             app.use(function(req, res, next) {
-                req = _.assign(req, jc.req);
-                res = _.assign(res, jc.res);
+                _.assign(req, jc.req);
+                _.assign(res, jc.res);
                 next();
             });
             return app;
-        } 
+        }
     },
-
     //创建server
     server: function(app) {
         app.use(jc.init);
@@ -65,35 +62,32 @@ var jc = {
         var db = new mongo.db('mongodb://' + jc.config.db.host + ':' + jc.config.db.port + '/' + dbname, {
             safe: true
         });
-        db.open(function(error, dbConnetion) {
+        db.open(function(error) {
             if (error) {
                 jc.handleErr(error);
                 process.exit(1);
             }
         });
-
         return db;
     },
- 
     //处理需要权限控制的URL, true,需要验证登录，false不需要
     access: function(path) {
         var accessDir = jc.config.access;
         if (!(accessDir && accessDir.length)) {
             return false
-        };
+        }
         for (var i = 0; i < accessDir.length; i++) {
             if (!!~path.indexOf(accessDir[i])) {
                 return true;
             }
         }
-        return false
+        return false;
     }
 };
 //分发api
-var jc = _.assign(jc, utils, rest);
+jc = _.assign(jc, utils, rest);
 exports = module.exports = jc;
 
-//todo 
 // 访问不存在的路由会导致报错
 // 加上resource-config.js及静态目录加上static后对于子项目的影响
 // 静态资源访问拦截
