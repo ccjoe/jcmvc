@@ -64,7 +64,7 @@ var jc = {
         });
         db.open(function(error) {
             if (error) {
-                jc.handleErr(error);
+                utils.handleErr(error);
                 process.exit(1);
             }
         });
