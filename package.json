@@ -1,0 +1,72 @@
+{
+  "name": "jcmvc",
+  "version": "1.1.1",
+  "description": "一个Nodejs MVC框架，可以用来开发MVC模式的Web应用或者作为前端的html,css,js,img等的模块化管理及挂载 提供一个环境。",
+  "main": "index.js",
+  "scripts": {
+    "test": "npm test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/ccjoe/jcmvc.git"
+  },
+  "keywords": [
+    "nodejs",
+    "mvc",
+    "web模块化管理"
+  ],
+  "author": {
+    "name": "joecora@live.com"
+  },
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/ccjoe/jcmvc/issues"
+  },
+  "homepage": "https://github.com/ccjoe/jcmvc#readme",
+  "dependencies": {
+    "glob": "~5.0.3",
+    "mongoskin": "1.4.13",
+    "mongodb": "~1.4",
+    "lodash": "~3.10.0",
+    "dot": "1.0.3",
+    "chalk": "~1.1.0",
+    "passport": ">= 0.2.2",
+    "passport-local": ">= 1.0.0",
+    "connect": "3.4.0",
+    "cookie-session": "~1.2.0",
+    "express-session": "1.11.3",
+    "serve-static": "~1.9.3",
+    "serve-favicon": "~2.2.0",
+    "body-parser": "~1.12.0",
+    "request": "2.61.0"
+  },
+  "directories": {
+    "example": "example"
+  },
+  "devDependencies": {},
+  "gitHead": "085e23c851b8ae10d58f962c5b5a73787443428b",
+  "_id": "jcmvc@1.1.1",
+  "_shasum": "405b4de921dc261ac7ee49d91ab0d6e485784244",
+  "_from": "jcmvc@1.1.1",
+  "_npmVersion": "2.14.3",
+  "_nodeVersion": "4.1.0",
+  "_npmUser": {
+    "name": "joecora",
+    "email": "joecora@live.com"
+  },
+  "dist": {
+    "shasum": "405b4de921dc261ac7ee49d91ab0d6e485784244",
+    "tarball": "http://registry.npmjs.org/jcmvc/-/jcmvc-1.1.1.tgz"
+  },
+  "maintainers": [
+    {
+      "name": "joecora",
+      "email": "joecora@live.com"
+    }
+  ],
+  "_npmOperationalInternal": {
+    "host": "packages-6-west.internal.npmjs.com",
+    "tmp": "tmp/jcmvc-1.1.1.tgz_1456285296531_0.3106397872325033"
+  },
+  "_resolved": "https://registry.npmjs.org/jcmvc/-/jcmvc-1.1.1.tgz"
+}
