@@ -88,49 +88,50 @@ var db = Jc.db(config, 'blog');
 ### 定义控制器及ACTION
 控制器利用model返回的promise将取得的数据返回，控制器会返回一个带数据的promise方法，框架会将控制器返回的数据自动处理,
 控制器仅需返回一个_带数据的promise方法_。
+
 ```javascript
 //定义MVC的数据输出
 var userModel = require('../models/user');
-
 exports.index = function(req, res){
-return {};
+  return {};
 }
 
 exports.list = function (req, res, args) {
-return userModel.list(req, res).then(function(list){
-return list;
-});
+  return userModel.list(req, res).then(function(list){
+    return list;
+  });
 }
 
 exports.view = function (req, res, args) {
-req.name = args;
-return userModel.view(req, res).then(function(data){
-return data;
-});
+  req.name = args;
+  return userModel.view(req, res).then(function(data){
+    return data;
+  });
 }
 //定义REST的数据输出
 exports.rest = {
-query: exports.list,
-update: function(req, res){
-return userModel.update(req, res).then(function(res){
-return res;
-});
-},
-create: function(req, res){
-return userModel.create(req, res).then(function(res){
-return res;
-});
-},
-remove: function(req, res){
-return userModel.remove(req, res).then(function(res){
-return res;
-});
-}
+  query: exports.list,
+  update: function(req, res){
+      return userModel.update(req, res).then(function(res){
+        return res;
+    });
+  },
+  create: function(req, res){
+    return userModel.create(req, res).then(function(res){
+      return res;
+    });
+  },
+  remove: function(req, res){
+    return userModel.remove(req, res).then(function(res){
+      return res;
+    });
+  }
 }
 ```
 
 ### 定义视图
 框架将控制器的视图自动传入模板，这里模板引擎固定为doT。doT在测试中执行效率较高，且语法较为简单实用。
+
 ```html
 {{#def.load('public/header.html')}}
 <p>用户 {{=it.name }}：</p>
@@ -179,30 +180,30 @@ var path = require('path')
 ,fePath = path.normalize('/Users/shaofengliu/IT/git/webcenter/web1/')
 
 var config = {
-dev: {
-//应用配置
-app: {
-name: 'JC-web1',
-port: 821,
-host: 'mvc.jc.me',//'127.0.0.1',
-},
-//目录配置
-path: {
-root: rootPath,     //根目录
-stat: path.normalize(fePath + (env==='dev' ? 'src/' : 'dist/')),   //静态资源目录
-view: path.normalize(fePath + 'views/')     //模板目录
-},
-//Restful url前缀，即带此前缀的url都是restful服务，且无restful资源无关，即与model操作无关型uri前缀;
-restUriPrefix: '/api'
-},
-//test重载dev, test与dev环境不一致的可以在test对象里定义，一致的不需要
-test: {},
-//生产版环境配置：production重载dev与test,production与test环境不一致的可以在production对象里定义，一致的不需要
-production:{},
-//引用配置,模块引用的header或footer或css,js的配置
-refconfig:{
+  dev: {
+    //应用配置
+    app: {
+      name: 'JC-web1',
+      port: 821,
+      host: 'mvc.jc.me',//'127.0.0.1',
+    },
+    //目录配置
+    path: {
+      root: rootPath,     //根目录
+      stat: path.normalize(fePath + (env==='dev' ? 'src/' : 'dist/')),   //静态资源目录
+      view: path.normalize(fePath + 'views/')     //模板目录
+    },
+    //Restful url前缀，即带此前缀的url都是restful服务，且无restful资源无关，即与model操作无关型uri前缀;
+    restUriPrefix: '/api'
+  },
+  //test重载dev, test与dev环境不一致的可以在test对象里定义，一致的不需要
+  test: {},
+  //生产版环境配置：production重载dev与test,production与test环境不一致的可以在production对象里定义，一致的不需要
+  production:{},
+  //引用配置,模块引用的header或footer或css,js的配置
+  refconfig:{
 
-}
+  }
 };
 config.test = _.assign({}, config.dev, config.test);
 config.production = _.assign({}, config.test, config.production);
