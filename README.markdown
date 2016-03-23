@@ -217,4 +217,16 @@ module.exports = config[env];
 - 2015-08-04 更新日志 引入Restful模块，在config里配置restRuiPrefix: '/api',则此路由下服从restful规则。
 - 2015-08-05 基本完成rest模块。rest的model可以共用mvc的model，也可以在model里定义个rest对象方法集合，在ctrl里对应的也是exports.rest = {},规则与MVC一样，ctrl仅需要返回组织好的数据，如果是promise则需要返回带组织好的数据的promise便可以自动返回json
 - 2015-09-11 挂载多个web服务，APP(可无)和 FE 可以指定到任意目录（详见以上）
+- 2016-03-23 前端目录新增res-config-dev.js(之前已有)，res-config-prod.js配置文件，方便系统规划配置任意页面css,js引用
 
+```
+//如果有res-config-dev.js或res-config-prod.js配置的话，在html里可以通过resource.css, resource.js调用。
+{{~it.resource.css :item:index}}
+<link rel="stylesheet" href="{{=item}}">
+{{~}}
+
+<!-- 读取各页面差异化js资源引用 -->
+{{~it.resource.js :item:index}}
+<script src="{{=item}}"></script>
+{{~}}
+```
